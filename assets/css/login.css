@@ -1,0 +1,228 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top left, rgba(53, 109, 186, 0.22), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(120, 144, 176, 0.18), transparent 24%),
+        linear-gradient(135deg, #f4f7fb 0%, #e9eff7 46%, #dfe7f1 100%);
+    color: #1f2933;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.container {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    padding: 24px;
+    gap: 24px;
+}
+
+.left-panel,
+.right-panel {
+    position: relative;
+    border-radius: 34px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(77, 54, 26, 0.14);
+}
+
+.left-panel {
+    padding: 54px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.12), transparent 30%),
+        linear-gradient(140deg, rgba(36, 77, 134, 0.96), rgba(53, 109, 186, 0.93) 50%, rgba(128, 160, 201, 0.82));
+    color: white;
+}
+
+.left-panel::before {
+    content: "";
+    position: absolute;
+    inset: auto -60px -90px auto;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: rgba(255, 248, 235, 0.18);
+    filter: blur(8px);
+}
+
+.left-panel::after {
+    content: "CRM";
+    position: absolute;
+    top: 42px;
+    left: 48px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 4.4rem;
+    line-height: 0.9;
+    letter-spacing: 0.04em;
+    color: rgba(255, 247, 235, 0.16);
+}
+
+.left-panel h1 {
+    position: relative;
+    max-width: 500px;
+    margin-bottom: 18px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2.8rem, 5vw, 5rem);
+    line-height: 0.92;
+}
+
+.left-panel p {
+    position: relative;
+    max-width: 420px;
+    font-size: 1.05rem;
+    color: rgba(255, 249, 241, 0.9);
+}
+
+.right-panel {
+    display: grid;
+    place-items: center;
+    padding: 28px;
+    background: rgba(247, 250, 255, 0.82);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(31, 41, 51, 0.08);
+}
+
+.login-box {
+    width: min(460px, 100%);
+    padding: 38px 34px;
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(31, 41, 51, 0.08);
+    box-shadow: 0 22px 44px rgba(92, 68, 37, 0.12);
+}
+
+.login-box::before {
+    content: "Acceso";
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.8rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #244d86;
+}
+
+.login-box h2 {
+    margin-bottom: 26px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 2rem;
+    color: #1f2933;
+}
+
+.error {
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: rgba(209, 67, 67, 0.12);
+    color: #9f2f2f;
+    font-weight: 600;
+}
+
+form {
+    display: grid;
+    gap: 16px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+}
+
+.input-group label {
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 15px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(31, 41, 51, 0.14);
+    background: rgba(255, 255, 255, 0.9);
+    color: #1f2933;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.input-group input:focus {
+    border-color: rgba(53, 109, 186, 0.55);
+    box-shadow: 0 0 0 4px rgba(53, 109, 186, 0.12);
+    transform: translateY(-1px);
+}
+
+button {
+    margin-top: 6px;
+    width: 100%;
+    padding: 15px 18px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #4f8dd8, #356dba);
+    color: white;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 16px 28px rgba(53, 109, 186, 0.22);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+button:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.02);
+    box-shadow: 0 20px 36px rgba(53, 109, 186, 0.28);
+}
+
+@media (max-width: 980px) {
+    .container {
+        grid-template-columns: 1fr;
+    }
+
+    .left-panel,
+    .right-panel {
+        min-height: 280px;
+    }
+
+    .left-panel {
+        padding: 34px 28px;
+        justify-content: flex-end;
+    }
+
+    .left-panel::after {
+        top: 26px;
+        left: 28px;
+        font-size: 3.2rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .container {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .left-panel,
+    .right-panel,
+    .login-box {
+        border-radius: 24px;
+    }
+
+    .left-panel {
+        padding: 26px 22px;
+    }
+
+    .login-box {
+        padding: 26px 22px;
+    }
+
+    .left-panel h1 {
+        font-size: 2.3rem;
+    }
+}

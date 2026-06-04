@@ -1,0 +1,95 @@
+RewriteEngine On
+
+# Redirige URLs antiguas /pages/... a rutas limpias
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/dashboard/dashboard\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/dashboard/dashboard\.php$ dashboard [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/leads/leads\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/leads/leads\.php$ leads [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/chat/chat\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/chat/chat\.php$ chat [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/chat/chat_imagenes_admin\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/chat/chat_imagenes_admin\.php$ chat/imagenes [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/leads/detalles_leads\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/leads/detalles_leads\.php$ lead [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/leads/eliminar\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/leads/eliminar\.php$ eliminar-leads [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/leads/exportar\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/leads/exportar\.php$ exportar [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/leads/historico\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/leads/historico\.php$ historico [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/calendar/citas\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/calendar/citas\.php$ calendario [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/documents/documentos\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/documents/documentos\.php$ documentos [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/documents/revision_documentos\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/documents/revision_documentos\.php$ documentos/revision [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/documents/bandeja_documentos\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/documents/bandeja_documentos\.php$ documentos/bandeja [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/operations/cargar\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/operations/cargar\.php$ cargar [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/operations/actualizar\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/operations/actualizar\.php$ actualizar [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/operations/asignar_individual\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/operations/asignar_individual\.php$ asignar-individual [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/users/usuarios\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/users/usuarios\.php$ usuarios [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/users/asignar_users\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/users/asignar_users\.php$ asignar-usuarios [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/monitor/monitor\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/monitor/monitor\.php$ monitoreo [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/time/tiempos\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/time/tiempos\.php$ tiempos [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/news/novedades\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/news/novedades\.php$ novedades [R=301,L,QSA]
+
+RewriteCond %{THE_REQUEST} \s/+(.*/)?pages/news/novedades_aprobar\.php(?:[\s?]|$) [NC]
+RewriteRule ^pages/news/novedades_aprobar\.php$ novedades/aprobar [R=301,L,QSA]
+
+# Deja pasar archivos y carpetas reales
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Rutas limpias del CRM
+RewriteRule ^$ index.php [L,QSA]
+RewriteRule ^logout/?$ logout.php [L,QSA]
+RewriteRule ^dashboard/?$ pages/dashboard/dashboard.php [L,QSA]
+RewriteRule ^leads/?$ pages/leads/leads.php [L,QSA]
+RewriteRule ^chat/?$ pages/chat/chat.php [L,QSA]
+RewriteRule ^chat/imagenes/?$ pages/chat/chat_imagenes_admin.php [L,QSA]
+RewriteRule ^lead/?$ pages/leads/detalles_leads.php [L,QSA]
+RewriteRule ^eliminar-leads/?$ pages/leads/eliminar.php [L,QSA]
+RewriteRule ^exportar/?$ pages/leads/exportar.php [L,QSA]
+RewriteRule ^historico/?$ pages/leads/historico.php [L,QSA]
+RewriteRule ^calendario/?$ pages/calendar/citas.php [L,QSA]
+RewriteRule ^documentos/?$ pages/documents/documentos.php [L,QSA]
+RewriteRule ^documentos/revision/?$ pages/documents/revision_documentos.php [L,QSA]
+RewriteRule ^documentos/bandeja/?$ pages/documents/bandeja_documentos.php [L,QSA]
+RewriteRule ^cargar/?$ pages/operations/cargar.php [L,QSA]
+RewriteRule ^actualizar/?$ pages/operations/actualizar.php [L,QSA]
+RewriteRule ^asignar-individual/?$ pages/operations/asignar_individual.php [L,QSA]
+RewriteRule ^usuarios/?$ pages/users/usuarios.php [L,QSA]
+RewriteRule ^asignar-usuarios/?$ pages/users/asignar_users.php [L,QSA]
+RewriteRule ^monitoreo/?$ pages/monitor/monitor.php [L,QSA]
+RewriteRule ^tiempos/?$ pages/time/tiempos.php [L,QSA]
+RewriteRule ^novedades/?$ pages/news/novedades.php [L,QSA]
+RewriteRule ^novedades/aprobar/?$ pages/news/novedades_aprobar.php [L,QSA]
