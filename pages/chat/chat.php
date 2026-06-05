@@ -457,6 +457,7 @@ let renderedThreadMessages = [];
 let pendingThreadMessages = null;
 let pendingIncomingCount = 0;
 let chatModeRefreshInFlight = false;
+let chatModeRefreshQueued = false;
 let chatUnreadRefreshInFlight = false;
 
 function escapeHtml(value) {
@@ -1316,6 +1317,7 @@ async function refreshUnreadModeCounts() {
 
 async function refreshCurrentMode() {
     if (chatModeRefreshInFlight) {
+        chatModeRefreshQueued = true;
         return;
     }
     chatModeRefreshInFlight = true;
@@ -1329,6 +1331,10 @@ async function refreshCurrentMode() {
         renderAll();
     } finally {
         chatModeRefreshInFlight = false;
+        if (chatModeRefreshQueued) {
+            chatModeRefreshQueued = false;
+            refreshCurrentMode();
+        }
     }
 }
 

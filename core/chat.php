@@ -228,6 +228,47 @@ function chatEnsureImagesDirectory(): string
     return $path;
 }
 
+function chatSanitizeTempImageFileName(string $originalName, string $fallbackExtension = ''): string
+{
+    $baseName = basename(str_replace('\\', '/', trim($originalName)));
+    $extension = strtolower(pathinfo($baseName, PATHINFO_EXTENSION));
+    $nameWithoutExtension = pathinfo($baseName, PATHINFO_FILENAME);
+
+    if ($extension === '' && $fallbackExtension !== '') {
+        $extension = strtolower(ltrim($fallbackExtension, '.'));
+    }
+
+    $safeName = preg_replace('/[^A-Za-z0-9 _.-]/', '_', (string) $nameWithoutExtension);
+    $safeName = trim((string) $safeName, " ._\t\n\r\0\x0B");
+    $safeName = preg_replace('/\s+/', ' ', (string) $safeName);
+
+    if ($safeName === '') {
+        $safeName = 'imagen';
+    }
+
+    return $extension !== '' ? ($safeName . '.' . $extension) : $safeName;
+}
+
+function chatResolveUniqueTempImageFileName(string $originalName, string $fallbackExtension = ''): string
+{
+    $candidate = chatSanitizeTempImageFileName($originalName, $fallbackExtension);
+    $directory = chatEnsureImagesDirectory();
+    $extension = strtolower(pathinfo($candidate, PATHINFO_EXTENSION));
+    $nameWithoutExtension = pathinfo($candidate, PATHINFO_FILENAME);
+    $counter = 1;
+    $finalName = $candidate;
+
+    while (is_file($directory . DIRECTORY_SEPARATOR . $finalName)) {
+        $counter++;
+        $suffix = '_' . $counter;
+        $finalName = $extension !== ''
+            ? ($nameWithoutExtension . $suffix . '.' . $extension)
+            : ($nameWithoutExtension . $suffix);
+    }
+
+    return $finalName;
+}
+
 function chatResolveAdminImagePath(string $fileName): ?string
 {
     $safeName = basename(str_replace('\\', '/', trim($fileName)));
@@ -432,7 +473,7 @@ function chatStoreAdminTempImage(array $file): array
     }
 
     $extension = $allowed[$mime];
-    $safeName = 'img_' . date('Ymd_His') . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
+    $safeName = chatResolveUniqueTempImageFileName((string) ($file['name'] ?? ('imagen.' . $extension)), $extension);
     $diskDir = chatEnsureImagesDirectory();
     $diskPath = $diskDir . DIRECTORY_SEPARATOR . $safeName;
 
@@ -442,7 +483,7 @@ function chatStoreAdminTempImage(array $file): array
 
     return [
         'file_name' => $safeName,
-        'original_name' => trim((string) ($file['name'] ?? 'imagen')),
+        'original_name' => basename(str_replace('\\', '/', trim((string) ($file['name'] ?? 'imagen')))),
         'mime_type' => $mime,
         'size_bytes' => $size,
         'relative_path' => chatImagesPublicRelativePath() . '/' . $safeName,
@@ -530,7 +571,8 @@ function chatStoreAdminTempImagesFromZip(array $file): array
                 continue;
             }
 
-            $safeName = 'img_' . date('Ymd_His') . '_' . bin2hex(random_bytes(8)) . '.' . ($extension === 'jpeg' ? 'jpg' : $extension);
+            $normalizedExtension = $extension === 'jpeg' ? 'jpg' : $extension;
+            $safeName = chatResolveUniqueTempImageFileName($baseName, $normalizedExtension);
             $diskPath = $diskDir . DIRECTORY_SEPARATOR . $safeName;
 
             if (@file_put_contents($diskPath, $bytes) === false) {

@@ -15,6 +15,7 @@ if (!empty($_SESSION["user_id"]) && canView("documentos_review")) {
     require_once __DIR__ . "/../../core/documentos.php";
     $documentsUnreadSummary = obtenerResumenDocumentosFloor($conn, trim((string) ($_SESSION["pertenece"] ?? "")));
 }
+$documentsNotificationsEnabled = canView("documentos_review");
 ?>
 
 <div class="sidebar">
@@ -329,6 +330,7 @@ body.chat-drawer-open{
     const chatUrl = <?= json_encode(routeUrl('chat')) ?>;
     const documentsNotificationsUrl = <?= json_encode(appUrl('core/documentos_notifications.php')) ?>;
     const documentsHubUrl = <?= json_encode(routeUrl('documents_hub')) ?>;
+    const documentsNotificationsEnabled = <?= json_encode($documentsNotificationsEnabled) ?>;
     const currentUserId = <?= json_encode((int) ($_SESSION["user_id"] ?? 0)) ?>;
     const chatNotificationStorageKey = 'chat:lastNotificationKey:user:' + currentUserId;
     const documentsNotificationStorageKey = 'documents:lastNotificationId:user:' + currentUserId;
@@ -701,6 +703,9 @@ body.chat-drawer-open{
     }
 
     async function pollDocumentsNotifications() {
+        if (!documentsNotificationsEnabled) {
+            return;
+        }
         if (documentsNotificationsInFlight) {
             return;
         }
@@ -713,7 +718,18 @@ body.chat-drawer-open{
                 credentials: 'same-origin',
                 cache: 'no-store'
             });
-            const data = await response.json();
+            if (response.status === 401 || response.status === 403) {
+                return;
+            }
+
+            const rawText = await response.text();
+            let data = null;
+            try {
+                data = JSON.parse(rawText);
+            } catch (error) {
+                console.log('Documents notifications raw response', rawText);
+                return;
+            }
             if (!response.ok || !data.ok || !data.summary) return;
 
             const summary = data.summary;
@@ -735,10 +751,11 @@ body.chat-drawer-open{
     }
 
     async function refreshSidebarNotificationsNow() {
-        await Promise.allSettled([
-            pollChatNotifications(),
-            pollDocumentsNotifications()
-        ]);
+        const tasks = [pollChatNotifications()];
+        if (documentsNotificationsEnabled) {
+            tasks.push(pollDocumentsNotifications());
+        }
+        await Promise.allSettled(tasks);
     }
 
     function scheduleSidebarChatNotifications() {
@@ -772,7 +789,9 @@ body.chat-drawer-open{
         }
     });
     scheduleSidebarChatNotifications();
-    scheduleSidebarDocumentsNotifications();
+    if (documentsNotificationsEnabled) {
+        scheduleSidebarDocumentsNotifications();
+    }
 })();
 </script>
 <?php endif; ?>
