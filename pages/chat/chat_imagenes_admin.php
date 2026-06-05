@@ -261,6 +261,8 @@ $uploadFiles = chatListAdminUploadFiles();
 
         if (uploadButton) {
             uploadButton.disabled = true;
+            uploadButton.dataset.originalText = uploadButton.textContent;
+            uploadButton.textContent = 'Cargando...';
         }
 
         try {
@@ -287,6 +289,7 @@ $uploadFiles = chatListAdminUploadFiles();
         } finally {
             if (uploadButton) {
                 uploadButton.disabled = false;
+                uploadButton.textContent = uploadButton.dataset.originalText || <?= json_encode(t('chat_images.upload_button')) ?>;
             }
         }
     }
@@ -302,6 +305,8 @@ $uploadFiles = chatListAdminUploadFiles();
 
         if (zipUploadButton) {
             zipUploadButton.disabled = true;
+            zipUploadButton.dataset.originalText = zipUploadButton.textContent;
+            zipUploadButton.textContent = 'Procesando ZIP...';
         }
 
         try {
@@ -334,6 +339,7 @@ $uploadFiles = chatListAdminUploadFiles();
         } finally {
             if (zipUploadButton) {
                 zipUploadButton.disabled = false;
+                zipUploadButton.textContent = zipUploadButton.dataset.originalText || <?= json_encode(t('chat_images.zip_button')) ?>;
             }
         }
     }

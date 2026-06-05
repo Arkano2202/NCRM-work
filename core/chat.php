@@ -522,6 +522,10 @@ function chatStoreAdminTempImagesFromZip(array $file): array
     $allowedMimes = array_values($allowedExtensions);
     $stored = 0;
     $skipped = 0;
+    $skippedTooLarge = 0;
+    $skippedInvalidType = 0;
+    $skippedInvalidContent = 0;
+    $skippedReadError = 0;
     $diskDir = chatEnsureImagesDirectory();
 
     try {
@@ -534,12 +538,14 @@ function chatStoreAdminTempImagesFromZip(array $file): array
             $baseName = basename(str_replace('\\', '/', $entryName));
             if ($baseName === '') {
                 $skipped++;
+                $skippedReadError++;
                 continue;
             }
 
             $extension = strtolower(pathinfo($baseName, PATHINFO_EXTENSION));
             if (!isset($allowedExtensions[$extension])) {
                 $skipped++;
+                $skippedInvalidType++;
                 continue;
             }
 
@@ -547,12 +553,14 @@ function chatStoreAdminTempImagesFromZip(array $file): array
             $size = (int) ($stat['size'] ?? 0);
             if ($size <= 0 || $size > 2 * 1024 * 1024) {
                 $skipped++;
+                $skippedTooLarge++;
                 continue;
             }
 
             $stream = $zip->getStream($entryName);
             if (!is_resource($stream)) {
                 $skipped++;
+                $skippedReadError++;
                 continue;
             }
 
@@ -561,6 +569,7 @@ function chatStoreAdminTempImagesFromZip(array $file): array
 
             if (!is_string($bytes) || $bytes === '') {
                 $skipped++;
+                $skippedReadError++;
                 continue;
             }
 
@@ -568,6 +577,7 @@ function chatStoreAdminTempImagesFromZip(array $file): array
             $mime = strtolower((string) (($imageInfo['mime'] ?? '')));
             if ($mime === '' || !in_array($mime, $allowedMimes, true)) {
                 $skipped++;
+                $skippedInvalidContent++;
                 continue;
             }
 
@@ -577,6 +587,7 @@ function chatStoreAdminTempImagesFromZip(array $file): array
 
             if (@file_put_contents($diskPath, $bytes) === false) {
                 $skipped++;
+                $skippedReadError++;
                 continue;
             }
 
@@ -593,6 +604,10 @@ function chatStoreAdminTempImagesFromZip(array $file): array
     return [
         'stored_count' => $stored,
         'skipped_count' => $skipped,
+        'skipped_too_large' => $skippedTooLarge,
+        'skipped_invalid_type' => $skippedInvalidType,
+        'skipped_invalid_content' => $skippedInvalidContent,
+        'skipped_read_error' => $skippedReadError,
     ];
 }
 
