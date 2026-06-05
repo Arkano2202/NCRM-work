@@ -41,6 +41,9 @@ $lastFailuresReport = chatGetLastAdminUploadFailuresReport();
 .chat-image-item{min-width:0;height:100%;padding:18px;border-radius:26px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(246,248,252,.9));border:1px solid rgba(31,41,51,.08);display:grid;grid-template-rows:auto auto 1fr auto auto;gap:14px;box-shadow:0 18px 34px rgba(15,23,42,.06);overflow:hidden}
 .chat-image-preview{width:100%;min-width:0;aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:linear-gradient(180deg,rgba(244,247,252,.96),rgba(233,238,246,.84));border:1px solid rgba(31,41,51,.08);display:flex;align-items:center;justify-content:center;padding:12px}
 .chat-image-preview img{width:100%;height:100%;object-fit:contain;display:block;border-radius:14px;background:#fff}
+.chat-image-preview.is-pdf{flex-direction:column;gap:10px;text-decoration:none;color:var(--ink)}
+.chat-image-preview-icon{width:88px;height:88px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(215,75,75,.16),rgba(184,45,45,.08));color:#b12f2f;font-size:2.2rem;font-weight:800;box-shadow:inset 0 0 0 1px rgba(177,47,47,.12)}
+.chat-image-preview-label{font-size:.92rem;font-weight:700;color:var(--muted)}
 .chat-images-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;margin-bottom:16px}
 .chat-image-title{min-width:0;font-weight:800;font-size:1rem;line-height:1.35;color:var(--ink);word-break:break-word;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em}
 .chat-image-meta{min-width:0;display:grid;gap:10px;font-size:.92rem;color:var(--muted);padding:14px 16px;border-radius:18px;background:rgba(53,102,188,.05);border:1px solid rgba(53,102,188,.08);overflow:hidden}
@@ -87,7 +90,7 @@ $lastFailuresReport = chatGetLastAdminUploadFailuresReport();
                                 id="chatImagesUploadInput"
                                 class="chat-images-upload-input"
                                 name="images[]"
-                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.pdf"
                                 multiple
                             >
                             <button type="submit" class="btn-primary" id="chatImagesUploadButton"><?= htmlspecialchars(t('chat_images.upload_button')) ?></button>
@@ -136,16 +139,26 @@ $lastFailuresReport = chatGetLastAdminUploadFailuresReport();
                             $viewUrl = appUrl('core/chat_image_admin_file.php?file=' . rawurlencode($fileName));
                             $downloadUrl = appUrl('core/chat_image_admin_file.php?file=' . rawurlencode($fileName) . '&download=1');
                             $sizeLabel = number_format(((int) ($image['size_bytes'] ?? 0)) / 1024, 1) . ' KB';
+                            $mimeType = (string) ($image['mime_type'] ?? 'application/octet-stream');
+                            $isPdf = $mimeType === 'application/pdf' || str_ends_with(strtolower($fileName), '.pdf');
                             ?>
                             <article class="chat-image-item" data-file="<?= htmlspecialchars($fileName) ?>">
-                                <a class="chat-image-preview" href="<?= htmlspecialchars($viewUrl) ?>" target="_blank" rel="noopener noreferrer">
-                                    <img src="<?= htmlspecialchars($viewUrl) ?>" alt="<?= htmlspecialchars($image['original_name'] ?? $fileName) ?>" loading="lazy">
-                                </a>
+                                <?php if ($isPdf): ?>
+                                    <a class="chat-image-preview is-pdf" href="<?= htmlspecialchars($viewUrl) ?>" target="_blank" rel="noopener noreferrer">
+                                        <div class="chat-image-preview-icon">PDF</div>
+                                        <div class="chat-image-preview-label">Abrir PDF</div>
+                                    </a>
+                                <?php else: ?>
+                                    <a class="chat-image-preview" href="<?= htmlspecialchars($viewUrl) ?>" target="_blank" rel="noopener noreferrer">
+                                        <img src="<?= htmlspecialchars($viewUrl) ?>" alt="<?= htmlspecialchars($image['original_name'] ?? $fileName) ?>" loading="lazy">
+                                    </a>
+                                <?php endif; ?>
                                 <div class="chat-image-title"><?= htmlspecialchars($image['original_name'] ?? $fileName) ?></div>
                                 <div class="chat-image-meta">
                                     <div><strong><?= htmlspecialchars(t('chat_images.file_name')) ?>:</strong> <?= htmlspecialchars($fileName) ?></div>
                                     <div><strong><?= htmlspecialchars(t('chat_images.created_at')) ?>:</strong> <?= htmlspecialchars((string) ($image['created_at'] ?? '-')) ?></div>
                                     <div><strong><?= htmlspecialchars(t('chat_images.size')) ?>:</strong> <?= htmlspecialchars($sizeLabel) ?></div>
+                                    <div><strong>MIME:</strong> <?= htmlspecialchars($mimeType) ?></div>
                                     <div><strong><?= htmlspecialchars(t('chat_images.sender')) ?>:</strong> <?= htmlspecialchars((string) (($image['sender_name'] ?? '') !== '' ? $image['sender_name'] : '-')) ?></div>
                                     <div><strong><?= htmlspecialchars(t('chat_images.receiver')) ?>:</strong> <?= htmlspecialchars((string) (($image['receiver_name'] ?? '') !== '' ? $image['receiver_name'] : '-')) ?></div>
                                 </div>

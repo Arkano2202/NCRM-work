@@ -295,7 +295,7 @@ function chatBuildAdminUploadFailureReason(string $reasonCode): string
         'duplicate_name' => 'Nombre duplicado en chat_temp',
         'too_large' => 'Supera 2 MB',
         'invalid_type' => 'Extension no permitida',
-        'invalid_content' => 'No es una imagen valida',
+        'invalid_content' => 'No es un archivo valido',
         'read_error' => 'No se pudo leer correctamente',
         'move_error' => 'No se pudo guardar el archivo',
         default => 'No fue posible cargar el archivo',
@@ -584,6 +584,7 @@ function chatStoreAdminTempImage(array $file): array
         'image/png' => 'png',
         'image/webp' => 'webp',
         'image/gif' => 'gif',
+        'application/pdf' => 'pdf',
     ];
 
     if (!isset($allowed[$mime])) {
@@ -640,6 +641,7 @@ function chatStoreAdminTempImagesFromZip(array $file): array
         'png' => 'image/png',
         'webp' => 'image/webp',
         'gif' => 'image/gif',
+        'pdf' => 'application/pdf',
     ];
 
     $allowedMimes = array_values($allowedExtensions);
@@ -703,8 +705,17 @@ function chatStoreAdminTempImagesFromZip(array $file): array
                 continue;
             }
 
-            $imageInfo = @getimagesizefromstring($bytes);
-            $mime = strtolower((string) (($imageInfo['mime'] ?? '')));
+            $mime = '';
+            if ($extension === 'pdf') {
+                $header = substr($bytes, 0, 5);
+                if ($header === '%PDF-') {
+                    $mime = 'application/pdf';
+                }
+            } else {
+                $imageInfo = @getimagesizefromstring($bytes);
+                $mime = strtolower((string) (($imageInfo['mime'] ?? '')));
+            }
+
             if ($mime === '' || !in_array($mime, $allowedMimes, true)) {
                 $skipped++;
                 $skippedInvalidContent++;
