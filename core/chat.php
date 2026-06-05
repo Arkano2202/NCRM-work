@@ -311,6 +311,30 @@ function chatEnsureAdminReportDirectory(): string
     return $path;
 }
 
+function chatSetLastAdminUploadFailuresReport(string $fileName): void
+{
+    $_SESSION['chat_images_last_report'] = basename($fileName);
+}
+
+function chatGetLastAdminUploadFailuresReport(): ?array
+{
+    $fileName = basename((string) ($_SESSION['chat_images_last_report'] ?? ''));
+    if ($fileName === '' || $fileName === '.' || $fileName === '..') {
+        return null;
+    }
+
+    $fullPath = chatEnsureAdminReportDirectory() . DIRECTORY_SEPARATOR . $fileName;
+    if (!is_file($fullPath)) {
+        return null;
+    }
+
+    return [
+        'file_name' => $fileName,
+        'full_path' => $fullPath,
+        'url' => appUrl('core/chat_report_admin_file.php?file=' . rawurlencode($fileName)),
+    ];
+}
+
 function chatCreateAdminUploadFailuresReport(array $rows): ?array
 {
     if (empty($rows)) {
@@ -354,10 +378,12 @@ function chatCreateAdminUploadFailuresReport(array $rows): ?array
     $spreadsheet->disconnectWorksheets();
     unset($spreadsheet);
 
+    chatSetLastAdminUploadFailuresReport($fileName);
+
     return [
         'file_name' => $fileName,
         'full_path' => $fullPath,
-        'url' => appUrl('uploads/chat_reports/' . rawurlencode($fileName)),
+        'url' => appUrl('core/chat_report_admin_file.php?file=' . rawurlencode($fileName)),
     ];
 }
 

@@ -12,6 +12,7 @@ requirePermission("chat_images_admin");
 
 $images = chatListAdminImages($conn);
 $uploadFiles = chatListAdminUploadFiles();
+$lastFailuresReport = chatGetLastAdminUploadFailuresReport();
 ?>
 <!DOCTYPE html>
 <html lang="<?= htmlspecialchars(strtolower(appLanguage())) ?>">
@@ -92,6 +93,11 @@ $uploadFiles = chatListAdminUploadFiles();
                             <button type="submit" class="btn-primary" id="chatImagesUploadButton"><?= htmlspecialchars(t('chat_images.upload_button')) ?></button>
                         </form>
                         <div class="chat-images-upload-note"><?= htmlspecialchars(t('chat_images.upload_help')) ?></div>
+                        <?php if ($lastFailuresReport !== null): ?>
+                            <a class="btn-secondary" href="<?= htmlspecialchars((string) $lastFailuresReport['url']) ?>" style="justify-self:flex-start;">
+                                Descargar ultimo informe de fallidas
+                            </a>
+                        <?php endif; ?>
                     </div>
                     <div class="chat-images-upload-box">
                         <div class="chat-images-note"><?= htmlspecialchars(t('chat_images.zip_note')) ?></div>
@@ -106,6 +112,11 @@ $uploadFiles = chatListAdminUploadFiles();
                             <button type="submit" class="btn-primary" id="chatImagesZipUploadButton"><?= htmlspecialchars(t('chat_images.zip_button')) ?></button>
                         </form>
                         <div class="chat-images-upload-note"><?= htmlspecialchars(t('chat_images.zip_help')) ?></div>
+                        <?php if ($lastFailuresReport !== null): ?>
+                            <a class="btn-secondary" href="<?= htmlspecialchars((string) $lastFailuresReport['url']) ?>" style="justify-self:flex-start;">
+                                Descargar ultimo informe de fallidas
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php if (empty($images)): ?>
