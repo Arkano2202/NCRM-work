@@ -450,6 +450,7 @@ let lastThreadContextKey = '';
 let lastThreadMessageCount = 0;
 let lastThreadLatestKey = '';
 let lastThreadRenderSignature = '';
+let lastListRenderSignature = '';
 let forceScrollToBottom = true;
 let chatImageZoomLevel = 1;
 let contextMenuMessageId = 0;
@@ -545,6 +546,27 @@ function buildThreadRenderSignature(messages) {
             replyKey,
         ].join('~');
     }).join('||');
+}
+
+function buildListRenderSignature(items, selectedId, mode, query, emptyState) {
+    const normalizedItems = Array.isArray(items) ? items : [];
+    const normalizedQuery = String(query || '').trim().toLowerCase();
+    return JSON.stringify({
+        mode: String(mode || ''),
+        selectedId: Number(selectedId || 0),
+        query: normalizedQuery,
+        emptyState: String(emptyState || ''),
+        items: normalizedItems.map((item) => ({
+            id: Number(item.id || 0),
+            name: String(item.name || ''),
+            role: String(item.role || ''),
+            city: String(item.city || ''),
+            last_message: String(item.last_message || ''),
+            last_message_at: String(item.last_message_at || ''),
+            last_sender_name: String(item.last_sender_name || ''),
+            unread_count: Number(item.unread_count || 0),
+        })),
+    });
 }
 
 function renderPendingIndicator() {
@@ -843,18 +865,36 @@ function renderModeTabs() {
 
 function renderList() {
     const baseItems = getActiveItems();
+    const previousScrollTop = contactList.scrollTop;
     if (!Array.isArray(baseItems) || baseItems.length === 0) {
-        contactList.innerHTML = '<div class="chat-empty">' + escapeHtml(chatState.mode === 'group' ? (chatState.groupsEnabled ? chatState.noGroupsText : chatState.groupDisabledText) : chatState.noContactsText) + '</div>';
+        const emptyHtml = '<div class="chat-empty">' + escapeHtml(chatState.mode === 'group' ? (chatState.groupsEnabled ? chatState.noGroupsText : chatState.groupDisabledText) : chatState.noContactsText) + '</div>';
+        const renderSignature = buildListRenderSignature([], 0, chatState.mode, chatSearchInput ? chatSearchInput.value : '', emptyHtml);
+        if (renderSignature === lastListRenderSignature) {
+            return;
+        }
+        contactList.innerHTML = emptyHtml;
+        lastListRenderSignature = renderSignature;
         return;
     }
 
     const items = getFilteredItems();
     if (items.length === 0) {
-        contactList.innerHTML = '<div class="chat-empty">' + escapeHtml(chatState.noMatchesText) + '</div>';
+        const emptyHtml = '<div class="chat-empty">' + escapeHtml(chatState.noMatchesText) + '</div>';
+        const renderSignature = buildListRenderSignature([], 0, chatState.mode, chatSearchInput ? chatSearchInput.value : '', emptyHtml);
+        if (renderSignature === lastListRenderSignature) {
+            return;
+        }
+        contactList.innerHTML = emptyHtml;
+        lastListRenderSignature = renderSignature;
         return;
     }
 
     const selectedId = chatState.mode === 'group' ? Number(chatState.selectedGroupId || 0) : Number(chatState.selectedDirectId || 0);
+    const renderSignature = buildListRenderSignature(items, selectedId, chatState.mode, chatSearchInput ? chatSearchInput.value : '', '');
+    if (renderSignature === lastListRenderSignature) {
+        return;
+    }
+
     contactList.innerHTML = items.map((item) => {
         const activeClass = Number(item.id) === selectedId ? ' active' : '';
         const unread = Number(item.unread_count || 0);
@@ -876,6 +916,8 @@ function renderList() {
             </div>
         `;
     }).join('');
+    contactList.scrollTop = previousScrollTop;
+    lastListRenderSignature = renderSignature;
 }
 
 function renderHeader() {
