@@ -224,18 +224,37 @@ $uploadFiles = chatListAdminUploadFiles();
         }, 3200);
     }
 
-    function triggerDownload(url) {
+    async function triggerDownload(url) {
         if (!url) {
-            return;
+            return false;
         }
 
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = '';
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                cache: 'no-store',
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                return false;
+            }
+
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const fileName = decodeURIComponent((url.split('/').pop() || 'reporte.xlsx').split('?')[0]);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = fileName;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+            return true;
+        } catch (error) {
+            return false;
+        }
     }
 
     function activateMode(mode) {
@@ -301,11 +320,11 @@ $uploadFiles = chatListAdminUploadFiles();
 
             showToast(data.message || <?= json_encode(t('chat_images.upload_error')) ?>);
             if (data.report_url) {
-                triggerDownload(data.report_url);
+                await triggerDownload(data.report_url);
             }
             if (response.ok && data.ok) {
                 uploadForm.reset();
-                setTimeout(() => window.location.reload(), 900);
+                setTimeout(() => window.location.reload(), 1200);
             }
         } catch (error) {
             showToast(<?= json_encode(t('chat_images.upload_error')) ?>);
@@ -354,11 +373,11 @@ $uploadFiles = chatListAdminUploadFiles();
 
             showToast(data.message || <?= json_encode(t('chat_images.zip_error')) ?>);
             if (data.report_url) {
-                triggerDownload(data.report_url);
+                await triggerDownload(data.report_url);
             }
             if (response.ok && data.ok) {
                 zipUploadForm.reset();
-                setTimeout(() => window.location.reload(), 900);
+                setTimeout(() => window.location.reload(), 1200);
             }
         } catch (error) {
             showToast(<?= json_encode(t('chat_images.zip_error')) ?>);

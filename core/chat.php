@@ -271,7 +271,22 @@ function chatResolveUniqueTempImageFileName(string $originalName, string $fallba
 
 function chatResolveExactTempImageFileName(string $originalName, string $fallbackExtension = ''): string
 {
-    return chatSanitizeTempImageFileName($originalName, $fallbackExtension);
+    $baseName = basename(str_replace('\\', '/', trim($originalName)));
+    $baseName = preg_replace('/[\x00-\x1F]/u', '', (string) $baseName);
+    $baseName = str_replace(['<', '>', ':', '"', '/', '\\', '|', '?', '*'], '_', (string) $baseName);
+    $baseName = trim((string) $baseName);
+
+    if ($baseName === '' || $baseName === '.' || $baseName === '..') {
+        $baseName = 'imagen';
+    }
+
+    $extension = pathinfo($baseName, PATHINFO_EXTENSION);
+    if ($extension === '' && $fallbackExtension !== '') {
+        $normalizedExtension = ltrim($fallbackExtension, '.');
+        $baseName .= '.' . $normalizedExtension;
+    }
+
+    return rtrim($baseName, " .");
 }
 
 function chatBuildAdminUploadFailureReason(string $reasonCode): string
