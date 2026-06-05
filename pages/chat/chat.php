@@ -11,7 +11,6 @@ requireLogin();
 requirePermission("chat");
 
 $currentUserId = (int) ($_SESSION["user_id"] ?? 0);
-chatMaybePurge($conn);
 $chatImagesEnabled = chatSupportsImages($conn);
 $chatGroupsEnabled = chatSupportsGroupChats($conn);
 $chatGroupImagesEnabled = $chatGroupsEnabled && chatSupportsGroupImages($conn);
@@ -450,6 +449,7 @@ let openReactionPickerKey = '';
 let lastThreadContextKey = '';
 let lastThreadMessageCount = 0;
 let lastThreadLatestKey = '';
+let lastThreadRenderSignature = '';
 let forceScrollToBottom = true;
 let chatImageZoomLevel = 1;
 let contextMenuMessageId = 0;
@@ -507,6 +507,43 @@ function countIncomingMessages(messages) {
         }
     });
     return count;
+}
+
+function buildThreadRenderSignature(messages) {
+    if (!Array.isArray(messages) || messages.length === 0) {
+        return '';
+    }
+
+    return messages.map((message) => {
+        const reactions = Array.isArray(message.reactions)
+            ? message.reactions.map((reaction) => [
+                String(reaction.emoji || ''),
+                Number(reaction.count || 0),
+                reaction.mine ? 1 : 0,
+            ].join(':')).join('|')
+            : '';
+
+        const replyPreview = message.reply_preview || null;
+        const replyKey = replyPreview
+            ? [
+                String(replyPreview.type || ''),
+                Number(replyPreview.id || 0),
+                String(replyPreview.excerpt || ''),
+            ].join(':')
+            : '';
+
+        return [
+            String(message.kind || 'text'),
+            Number(message.image_id || message.id || 0),
+            String(message.enviado_en || ''),
+            String(message.mensaje || ''),
+            message.deleted ? 1 : 0,
+            message.edited ? 1 : 0,
+            String(message.estado || ''),
+            reactions,
+            replyKey,
+        ].join('~');
+    }).join('||');
 }
 
 function renderPendingIndicator() {
@@ -884,6 +921,7 @@ function renderMessages() {
         lastThreadContextKey = threadContextKey;
         lastThreadMessageCount = 0;
         lastThreadLatestKey = '';
+        lastThreadRenderSignature = '';
         renderedThreadMessages = [];
         clearPendingThreadMessages();
         forceScrollToBottom = false;
@@ -895,6 +933,7 @@ function renderMessages() {
         lastThreadContextKey = threadContextKey;
         lastThreadMessageCount = 0;
         lastThreadLatestKey = '';
+        lastThreadRenderSignature = '';
         renderedThreadMessages = [];
         clearPendingThreadMessages();
         forceScrollToBottom = false;
@@ -912,6 +951,7 @@ function renderMessages() {
         messages.length > lastThreadMessageCount ||
         latestMessageKey !== lastThreadLatestKey
     );
+    const renderSignature = buildThreadRenderSignature(messages);
 
     if (contextChanged) {
         clearPendingThreadMessages();
@@ -922,6 +962,10 @@ function renderMessages() {
         return;
     } else if (wasNearBottom && pendingThreadMessages) {
         clearPendingThreadMessages();
+    }
+
+    if (!contextChanged && !hasNewMessage && !forceScrollToBottom && !pendingThreadMessages && renderSignature === lastThreadRenderSignature) {
+        return;
     }
 
     chatThread.innerHTML = messages.map((message) => {
@@ -1038,6 +1082,7 @@ function renderMessages() {
     lastThreadContextKey = threadContextKey;
     lastThreadMessageCount = messages.length;
     lastThreadLatestKey = latestMessageKey;
+    lastThreadRenderSignature = renderSignature;
     renderedThreadMessages = messages.slice();
     clearPendingThreadMessages();
     forceScrollToBottom = false;
@@ -1371,6 +1416,7 @@ async function selectListItem(itemId) {
         chatState.selectedDirectId = Number(itemId);
         chatState.selectedContact = findDirectContact(itemId);
     }
+    renderAll();
     await refreshCurrentMode();
 }
 

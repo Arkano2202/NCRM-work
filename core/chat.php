@@ -398,6 +398,162 @@ function chatDeleteAllAdminImages(mysqli $conn): int
     return $deletedCount;
 }
 
+function chatStoreAdminTempImage(array $file): array
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('invalid_upload');
+    }
+
+    $tmpName = (string) ($file['tmp_name'] ?? '');
+    if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+        throw new RuntimeException('invalid_upload');
+    }
+
+    $size = (int) ($file['size'] ?? 0);
+    if ($size <= 0) {
+        throw new RuntimeException('invalid_upload');
+    }
+
+    if ($size > 2 * 1024 * 1024) {
+        throw new RuntimeException('image_too_large');
+    }
+
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = (string) $finfo->file($tmpName);
+    $allowed = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+
+    if (!isset($allowed[$mime])) {
+        throw new RuntimeException('image_type_not_allowed');
+    }
+
+    $extension = $allowed[$mime];
+    $safeName = 'img_' . date('Ymd_His') . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
+    $diskDir = chatEnsureImagesDirectory();
+    $diskPath = $diskDir . DIRECTORY_SEPARATOR . $safeName;
+
+    if (!move_uploaded_file($tmpName, $diskPath)) {
+        throw new RuntimeException('move_upload_failed');
+    }
+
+    return [
+        'file_name' => $safeName,
+        'original_name' => trim((string) ($file['name'] ?? 'imagen')),
+        'mime_type' => $mime,
+        'size_bytes' => $size,
+        'relative_path' => chatImagesPublicRelativePath() . '/' . $safeName,
+    ];
+}
+
+function chatStoreAdminTempImagesFromZip(array $file): array
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('invalid_upload');
+    }
+
+    $tmpName = (string) ($file['tmp_name'] ?? '');
+    if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+        throw new RuntimeException('invalid_upload');
+    }
+
+    if (!class_exists('ZipArchive')) {
+        throw new RuntimeException('zip_not_supported');
+    }
+
+    $zip = new ZipArchive();
+    $openResult = $zip->open($tmpName);
+    if ($openResult !== true) {
+        throw new RuntimeException('invalid_zip');
+    }
+
+    $allowedExtensions = [
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+    ];
+
+    $allowedMimes = array_values($allowedExtensions);
+    $stored = 0;
+    $skipped = 0;
+    $diskDir = chatEnsureImagesDirectory();
+
+    try {
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = (string) $zip->getNameIndex($i);
+            if ($entryName === '' || str_ends_with($entryName, '/')) {
+                continue;
+            }
+
+            $baseName = basename(str_replace('\\', '/', $entryName));
+            if ($baseName === '') {
+                $skipped++;
+                continue;
+            }
+
+            $extension = strtolower(pathinfo($baseName, PATHINFO_EXTENSION));
+            if (!isset($allowedExtensions[$extension])) {
+                $skipped++;
+                continue;
+            }
+
+            $stat = $zip->statIndex($i);
+            $size = (int) ($stat['size'] ?? 0);
+            if ($size <= 0 || $size > 2 * 1024 * 1024) {
+                $skipped++;
+                continue;
+            }
+
+            $stream = $zip->getStream($entryName);
+            if (!is_resource($stream)) {
+                $skipped++;
+                continue;
+            }
+
+            $bytes = stream_get_contents($stream);
+            fclose($stream);
+
+            if (!is_string($bytes) || $bytes === '') {
+                $skipped++;
+                continue;
+            }
+
+            $imageInfo = @getimagesizefromstring($bytes);
+            $mime = strtolower((string) (($imageInfo['mime'] ?? '')));
+            if ($mime === '' || !in_array($mime, $allowedMimes, true)) {
+                $skipped++;
+                continue;
+            }
+
+            $safeName = 'img_' . date('Ymd_His') . '_' . bin2hex(random_bytes(8)) . '.' . ($extension === 'jpeg' ? 'jpg' : $extension);
+            $diskPath = $diskDir . DIRECTORY_SEPARATOR . $safeName;
+
+            if (@file_put_contents($diskPath, $bytes) === false) {
+                $skipped++;
+                continue;
+            }
+
+            $stored++;
+        }
+    } finally {
+        $zip->close();
+    }
+
+    if ($stored === 0) {
+        throw new RuntimeException('zip_without_images');
+    }
+
+    return [
+        'stored_count' => $stored,
+        'skipped_count' => $skipped,
+    ];
+}
+
 function chatListAdminUploadFiles(): array
 {
     $directory = chatUploadsRootPath();

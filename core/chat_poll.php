@@ -21,7 +21,6 @@ if ($currentUserId <= 0) {
     exit;
 }
 
-chatMaybePurge($conn);
 $currentUser = chatGetCurrentUser($conn, $currentUserId);
 if (!$currentUser) {
     http_response_code(404);

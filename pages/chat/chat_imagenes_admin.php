@@ -31,6 +31,12 @@ $uploadFiles = chatListAdminUploadFiles();
 .chat-images-mode-badge{min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#cb5037;color:#fff;font-size:.76rem;font-weight:800}
 .chat-images-mode-panel[hidden]{display:none !important}
 .chat-images-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.chat-images-upload-box{margin-top:18px;padding:16px 18px;border-radius:22px;background:linear-gradient(180deg,rgba(247,249,253,.96),rgba(239,243,249,.88));border:1px solid rgba(31,41,51,.08);display:grid;gap:12px}
+.chat-images-upload-form{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.chat-images-upload-input{max-width:100%;padding:10px 12px;border-radius:16px;border:1px solid rgba(31,41,51,.12);background:#fff;color:var(--ink)}
+.chat-images-upload-note{font-size:.88rem;color:var(--muted)}
+.chat-images-upload-grid{display:grid;gap:14px}
+@media (min-width:920px){.chat-images-upload-grid{grid-template-columns:1fr 1fr}}
 .chat-image-item{min-width:0;height:100%;padding:18px;border-radius:26px;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(246,248,252,.9));border:1px solid rgba(31,41,51,.08);display:grid;grid-template-rows:auto auto 1fr auto auto;gap:14px;box-shadow:0 18px 34px rgba(15,23,42,.06);overflow:hidden}
 .chat-image-preview{width:100%;min-width:0;aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:linear-gradient(180deg,rgba(244,247,252,.96),rgba(233,238,246,.84));border:1px solid rgba(31,41,51,.08);display:flex;align-items:center;justify-content:center;padding:12px}
 .chat-image-preview img{width:100%;height:100%;object-fit:contain;display:block;border-radius:14px;background:#fff}
@@ -71,6 +77,37 @@ $uploadFiles = chatListAdminUploadFiles();
 
             <section class="chat-images-card chat-images-mode-panel" data-mode-panel="images">
                 <div class="chat-images-note"><?= htmlspecialchars(t('chat_images.folder_note')) ?></div>
+                <div class="chat-images-upload-grid">
+                    <div class="chat-images-upload-box">
+                        <div class="chat-images-note"><?= htmlspecialchars(t('chat_images.upload_note')) ?></div>
+                        <form id="chatImagesUploadForm" class="chat-images-upload-form" enctype="multipart/form-data">
+                            <input
+                                type="file"
+                                id="chatImagesUploadInput"
+                                class="chat-images-upload-input"
+                                name="images[]"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                multiple
+                            >
+                            <button type="submit" class="btn-primary" id="chatImagesUploadButton"><?= htmlspecialchars(t('chat_images.upload_button')) ?></button>
+                        </form>
+                        <div class="chat-images-upload-note"><?= htmlspecialchars(t('chat_images.upload_help')) ?></div>
+                    </div>
+                    <div class="chat-images-upload-box">
+                        <div class="chat-images-note"><?= htmlspecialchars(t('chat_images.zip_note')) ?></div>
+                        <form id="chatImagesZipUploadForm" class="chat-images-upload-form" enctype="multipart/form-data">
+                            <input
+                                type="file"
+                                id="chatImagesZipUploadInput"
+                                class="chat-images-upload-input"
+                                name="zip_file"
+                                accept=".zip,application/zip,application/x-zip-compressed"
+                            >
+                            <button type="submit" class="btn-primary" id="chatImagesZipUploadButton"><?= htmlspecialchars(t('chat_images.zip_button')) ?></button>
+                        </form>
+                        <div class="chat-images-upload-note"><?= htmlspecialchars(t('chat_images.zip_help')) ?></div>
+                    </div>
+                </div>
                 <?php if (empty($images)): ?>
                     <div class="chat-images-empty" style="margin-top:16px;"><?= htmlspecialchars(t('chat_images.empty')) ?></div>
                 <?php else: ?>
@@ -160,11 +197,19 @@ $uploadFiles = chatListAdminUploadFiles();
 <script>
 (function () {
     const imageDeleteUrl = <?= json_encode(appUrl('core/chat_image_admin_delete.php')) ?>;
+    const imageUploadUrl = <?= json_encode(appUrl('core/chat_image_admin_upload.php')) ?>;
+    const imageZipUploadUrl = <?= json_encode(appUrl('core/chat_image_admin_upload_zip.php')) ?>;
     const uploadDeleteUrl = <?= json_encode(appUrl('core/uploads_admin_delete.php')) ?>;
     const grid = document.getElementById('chatImagesGrid');
     const uploadsGrid = document.getElementById('uploadsFilesGrid');
     const toast = document.getElementById('chatImagesToast');
     const deleteAllButton = document.getElementById('chatImagesDeleteAllButton');
+    const uploadForm = document.getElementById('chatImagesUploadForm');
+    const uploadInput = document.getElementById('chatImagesUploadInput');
+    const uploadButton = document.getElementById('chatImagesUploadButton');
+    const zipUploadForm = document.getElementById('chatImagesZipUploadForm');
+    const zipUploadInput = document.getElementById('chatImagesZipUploadInput');
+    const zipUploadButton = document.getElementById('chatImagesZipUploadButton');
     const uploadsDeleteAllButton = document.getElementById('uploadsDeleteAllButton');
     const emptyText = <?= json_encode(t('chat_images.empty')) ?>;
     const uploadsEmptyText = <?= json_encode(t('uploads_files.empty')) ?>;
@@ -201,6 +246,96 @@ $uploadFiles = chatListAdminUploadFiles();
             data = { ok: false, message: errorText };
         }
         return { response, data };
+    }
+
+    async function uploadImages() {
+        if (!uploadForm || !uploadInput || !uploadInput.files || !uploadInput.files.length) {
+            showToast(<?= json_encode(t('chat_images.upload_error')) ?>);
+            return;
+        }
+
+        const formData = new FormData();
+        Array.from(uploadInput.files).forEach((file) => {
+            formData.append('images[]', file);
+        });
+
+        if (uploadButton) {
+            uploadButton.disabled = true;
+        }
+
+        try {
+            const response = await fetch(imageUploadUrl, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            let data = null;
+            try {
+                data = await response.json();
+            } catch (error) {
+                data = { ok: false, message: <?= json_encode(t('chat_images.upload_error')) ?> };
+            }
+
+            showToast(data.message || <?= json_encode(t('chat_images.upload_error')) ?>);
+            if (response.ok && data.ok) {
+                uploadForm.reset();
+                setTimeout(() => window.location.reload(), 900);
+            }
+        } catch (error) {
+            showToast(<?= json_encode(t('chat_images.upload_error')) ?>);
+        } finally {
+            if (uploadButton) {
+                uploadButton.disabled = false;
+            }
+        }
+    }
+
+    async function uploadZipImages() {
+        if (!zipUploadForm || !zipUploadInput || !zipUploadInput.files || !zipUploadInput.files.length) {
+            showToast(<?= json_encode(t('chat_images.zip_error')) ?>);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('zip_file', zipUploadInput.files[0]);
+
+        if (zipUploadButton) {
+            zipUploadButton.disabled = true;
+        }
+
+        try {
+            const response = await fetch(imageZipUploadUrl, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const rawText = await response.text();
+            let data = null;
+            try {
+                data = JSON.parse(rawText);
+            } catch (error) {
+                data = {
+                    ok: false,
+                    message: rawText && rawText.trim() !== ''
+                        ? rawText.trim().slice(0, 300)
+                        : <?= json_encode(t('chat_images.zip_error')) ?>
+                };
+            }
+
+            showToast(data.message || <?= json_encode(t('chat_images.zip_error')) ?>);
+            if (response.ok && data.ok) {
+                zipUploadForm.reset();
+                setTimeout(() => window.location.reload(), 900);
+            }
+        } catch (error) {
+            showToast(<?= json_encode(t('chat_images.zip_error')) ?>);
+        } finally {
+            if (zipUploadButton) {
+                zipUploadButton.disabled = false;
+            }
+        }
     }
 
     async function deleteImage(fileName, button) {
@@ -342,6 +477,19 @@ $uploadFiles = chatListAdminUploadFiles();
                 return;
             }
             deleteAllUploads();
+        });
+    }
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            uploadImages();
+        });
+    }
+
+    if (zipUploadForm) {
+        zipUploadForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            uploadZipImages();
         });
     }
 })();

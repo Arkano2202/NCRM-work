@@ -12,7 +12,6 @@ requirePermission("chat");
 header("Content-Type: application/json; charset=UTF-8");
 
 $currentUserId = (int) ($_SESSION["user_id"] ?? 0);
-chatMaybePurge($conn);
 $summary = chatGetUnreadSummary($conn, $currentUserId);
 
 echo json_encode([
