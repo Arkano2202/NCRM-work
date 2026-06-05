@@ -224,6 +224,20 @@ $uploadFiles = chatListAdminUploadFiles();
         }, 3200);
     }
 
+    function triggerDownload(url) {
+        if (!url) {
+            return;
+        }
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = '';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+
     function activateMode(mode) {
         document.querySelectorAll('[data-mode-tab]').forEach((tab) => {
             tab.classList.toggle('active', tab.getAttribute('data-mode-tab') === mode);
@@ -272,14 +286,23 @@ $uploadFiles = chatListAdminUploadFiles();
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
+            const rawText = await response.text();
             let data = null;
             try {
-                data = await response.json();
+                data = JSON.parse(rawText);
             } catch (error) {
-                data = { ok: false, message: <?= json_encode(t('chat_images.upload_error')) ?> };
+                data = {
+                    ok: false,
+                    message: rawText && rawText.trim() !== ''
+                        ? rawText.trim().slice(0, 300)
+                        : <?= json_encode(t('chat_images.upload_error')) ?>
+                };
             }
 
             showToast(data.message || <?= json_encode(t('chat_images.upload_error')) ?>);
+            if (data.report_url) {
+                triggerDownload(data.report_url);
+            }
             if (response.ok && data.ok) {
                 uploadForm.reset();
                 setTimeout(() => window.location.reload(), 900);
@@ -330,6 +353,9 @@ $uploadFiles = chatListAdminUploadFiles();
             }
 
             showToast(data.message || <?= json_encode(t('chat_images.zip_error')) ?>);
+            if (data.report_url) {
+                triggerDownload(data.report_url);
+            }
             if (response.ok && data.ok) {
                 zipUploadForm.reset();
                 setTimeout(() => window.location.reload(), 900);

@@ -43,26 +43,44 @@ if (is_array($input['name'] ?? null)) {
 
 $uploadedCount = 0;
 $errors = [];
+$failureRows = [];
 
 foreach ($files as $file) {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
         continue;
     }
 
+    $fileName = basename(str_replace('\\', '/', trim((string) ($file['name'] ?? 'archivo'))));
+
     try {
         chatStoreAdminTempImage($file);
         $uploadedCount++;
     } catch (RuntimeException $exception) {
         $code = $exception->getMessage();
+        $failureRows[] = [
+            'file_name' => $fileName,
+            'reason' => chatBuildAdminUploadFailureReason(match ($code) {
+                'image_too_large' => 'too_large',
+                'image_type_not_allowed' => 'invalid_type',
+                'duplicate_name' => 'duplicate_name',
+                'move_upload_failed' => 'move_error',
+                default => 'read_error',
+            }),
+        ];
         if ($code === 'image_too_large') {
             $errors[] = t('chat_images.upload_error_size');
         } elseif ($code === 'image_type_not_allowed') {
             $errors[] = t('chat_images.upload_error_type');
+        } elseif ($code === 'duplicate_name') {
+            $errors[] = chatBuildAdminUploadFailureReason('duplicate_name');
         } else {
             $errors[] = t('chat_images.upload_error');
         }
     }
 }
+
+$report = chatCreateAdminUploadFailuresReport($failureRows);
+$reportUrl = is_array($report) ? ($report['url'] ?? null) : null;
 
 if ($uploadedCount === 0) {
     http_response_code(400);
@@ -71,6 +89,7 @@ if ($uploadedCount === 0) {
         'uploaded_count' => 0,
         'message' => $errors[0] ?? t('chat_images.upload_error'),
         'errors' => $errors,
+        'report_url' => $reportUrl,
     ]);
     exit;
 }
@@ -88,5 +107,6 @@ echo json_encode([
     'uploaded_count' => $uploadedCount,
     'message' => $message,
     'errors' => $errors,
+    'report_url' => $reportUrl,
 ]);
 exit;

@@ -269,6 +269,83 @@ function chatResolveUniqueTempImageFileName(string $originalName, string $fallba
     return $finalName;
 }
 
+function chatResolveExactTempImageFileName(string $originalName, string $fallbackExtension = ''): string
+{
+    return chatSanitizeTempImageFileName($originalName, $fallbackExtension);
+}
+
+function chatBuildAdminUploadFailureReason(string $reasonCode): string
+{
+    return match ($reasonCode) {
+        'duplicate_name' => 'Nombre duplicado en chat_temp',
+        'too_large' => 'Supera 2 MB',
+        'invalid_type' => 'Extension no permitida',
+        'invalid_content' => 'No es una imagen valida',
+        'read_error' => 'No se pudo leer correctamente',
+        'move_error' => 'No se pudo guardar el archivo',
+        default => 'No fue posible cargar el archivo',
+    };
+}
+
+function chatEnsureAdminReportDirectory(): string
+{
+    $path = dirname(__DIR__) . '/uploads/chat_reports';
+    if (!is_dir($path)) {
+        @mkdir($path, 0775, true);
+    }
+    return $path;
+}
+
+function chatCreateAdminUploadFailuresReport(array $rows): ?array
+{
+    if (empty($rows)) {
+        return null;
+    }
+
+    $autoloadPath = dirname(__DIR__) . '/vendor/autoload.php';
+    if (!is_file($autoloadPath)) {
+        return null;
+    }
+
+    require_once $autoloadPath;
+
+    if (!class_exists(\PhpOffice\PhpSpreadsheet\Spreadsheet::class) || !class_exists(\PhpOffice\PhpSpreadsheet\Writer\Xlsx::class)) {
+        return null;
+    }
+
+    $reportDir = chatEnsureAdminReportDirectory();
+    $fileName = 'chat_temp_fallidas_' . date('Ymd_His') . '.xlsx';
+    $fullPath = $reportDir . DIRECTORY_SEPARATOR . $fileName;
+
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('No cargadas');
+    $sheet->fromArray(['Archivo', 'Motivo'], null, 'A1');
+
+    $rowIndex = 2;
+    foreach ($rows as $row) {
+        $sheet->setCellValue('A' . $rowIndex, (string) ($row['file_name'] ?? ''));
+        $sheet->setCellValue('B' . $rowIndex, (string) ($row['reason'] ?? ''));
+        $rowIndex++;
+    }
+
+    foreach (['A' => 46, 'B' => 42] as $column => $width) {
+        $sheet->getColumnDimension($column)->setWidth($width);
+    }
+    $sheet->getStyle('A1:B1')->getFont()->setBold(true);
+
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save($fullPath);
+    $spreadsheet->disconnectWorksheets();
+    unset($spreadsheet);
+
+    return [
+        'file_name' => $fileName,
+        'full_path' => $fullPath,
+        'url' => appUrl('uploads/chat_reports/' . rawurlencode($fileName)),
+    ];
+}
+
 function chatResolveAdminImagePath(string $fileName): ?string
 {
     $safeName = basename(str_replace('\\', '/', trim($fileName)));
@@ -473,9 +550,14 @@ function chatStoreAdminTempImage(array $file): array
     }
 
     $extension = $allowed[$mime];
-    $safeName = chatResolveUniqueTempImageFileName((string) ($file['name'] ?? ('imagen.' . $extension)), $extension);
+    $originalName = basename(str_replace('\\', '/', trim((string) ($file['name'] ?? ('imagen.' . $extension)))));
+    $safeName = chatResolveExactTempImageFileName($originalName, $extension);
     $diskDir = chatEnsureImagesDirectory();
     $diskPath = $diskDir . DIRECTORY_SEPARATOR . $safeName;
+
+    if (is_file($diskPath)) {
+        throw new RuntimeException('duplicate_name');
+    }
 
     if (!move_uploaded_file($tmpName, $diskPath)) {
         throw new RuntimeException('move_upload_failed');
@@ -483,10 +565,10 @@ function chatStoreAdminTempImage(array $file): array
 
     return [
         'file_name' => $safeName,
-        'original_name' => basename(str_replace('\\', '/', trim((string) ($file['name'] ?? 'imagen')))),
+        'original_name' => $originalName,
         'mime_type' => $mime,
         'size_bytes' => $size,
-        'relative_path' => chatImagesPublicRelativePath() . '/' . $safeName,
+        'relative_path' => chatImagesPublicRelativePath() . '/' . rawurlencode($safeName),
     ];
 }
 
@@ -526,6 +608,8 @@ function chatStoreAdminTempImagesFromZip(array $file): array
     $skippedInvalidType = 0;
     $skippedInvalidContent = 0;
     $skippedReadError = 0;
+    $skippedDuplicateName = 0;
+    $failureRows = [];
     $diskDir = chatEnsureImagesDirectory();
 
     try {
@@ -539,6 +623,7 @@ function chatStoreAdminTempImagesFromZip(array $file): array
             if ($baseName === '') {
                 $skipped++;
                 $skippedReadError++;
+                $failureRows[] = ['file_name' => $entryName, 'reason' => chatBuildAdminUploadFailureReason('read_error')];
                 continue;
             }
 
@@ -546,6 +631,7 @@ function chatStoreAdminTempImagesFromZip(array $file): array
             if (!isset($allowedExtensions[$extension])) {
                 $skipped++;
                 $skippedInvalidType++;
+                $failureRows[] = ['file_name' => $baseName, 'reason' => chatBuildAdminUploadFailureReason('invalid_type')];
                 continue;
             }
 
@@ -554,6 +640,7 @@ function chatStoreAdminTempImagesFromZip(array $file): array
             if ($size <= 0 || $size > 2 * 1024 * 1024) {
                 $skipped++;
                 $skippedTooLarge++;
+                $failureRows[] = ['file_name' => $baseName, 'reason' => chatBuildAdminUploadFailureReason('too_large')];
                 continue;
             }
 
@@ -561,6 +648,7 @@ function chatStoreAdminTempImagesFromZip(array $file): array
             if (!is_resource($stream)) {
                 $skipped++;
                 $skippedReadError++;
+                $failureRows[] = ['file_name' => $baseName, 'reason' => chatBuildAdminUploadFailureReason('read_error')];
                 continue;
             }
 
@@ -570,6 +658,7 @@ function chatStoreAdminTempImagesFromZip(array $file): array
             if (!is_string($bytes) || $bytes === '') {
                 $skipped++;
                 $skippedReadError++;
+                $failureRows[] = ['file_name' => $baseName, 'reason' => chatBuildAdminUploadFailureReason('read_error')];
                 continue;
             }
 
@@ -578,16 +667,25 @@ function chatStoreAdminTempImagesFromZip(array $file): array
             if ($mime === '' || !in_array($mime, $allowedMimes, true)) {
                 $skipped++;
                 $skippedInvalidContent++;
+                $failureRows[] = ['file_name' => $baseName, 'reason' => chatBuildAdminUploadFailureReason('invalid_content')];
                 continue;
             }
 
             $normalizedExtension = $extension === 'jpeg' ? 'jpg' : $extension;
-            $safeName = chatResolveUniqueTempImageFileName($baseName, $normalizedExtension);
+            $safeName = chatResolveExactTempImageFileName($baseName, $normalizedExtension);
             $diskPath = $diskDir . DIRECTORY_SEPARATOR . $safeName;
+
+            if (is_file($diskPath)) {
+                $skipped++;
+                $skippedDuplicateName++;
+                $failureRows[] = ['file_name' => $safeName, 'reason' => chatBuildAdminUploadFailureReason('duplicate_name')];
+                continue;
+            }
 
             if (@file_put_contents($diskPath, $bytes) === false) {
                 $skipped++;
                 $skippedReadError++;
+                $failureRows[] = ['file_name' => $safeName, 'reason' => chatBuildAdminUploadFailureReason('move_error')];
                 continue;
             }
 
@@ -597,10 +695,6 @@ function chatStoreAdminTempImagesFromZip(array $file): array
         $zip->close();
     }
 
-    if ($stored === 0) {
-        throw new RuntimeException('zip_without_images');
-    }
-
     return [
         'stored_count' => $stored,
         'skipped_count' => $skipped,
@@ -608,6 +702,8 @@ function chatStoreAdminTempImagesFromZip(array $file): array
         'skipped_invalid_type' => $skippedInvalidType,
         'skipped_invalid_content' => $skippedInvalidContent,
         'skipped_read_error' => $skippedReadError,
+        'skipped_duplicate_name' => $skippedDuplicateName,
+        'failure_rows' => $failureRows,
     ];
 }
 

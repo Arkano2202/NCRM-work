@@ -31,6 +31,10 @@ try {
     $skippedInvalidType = (int) ($result['skipped_invalid_type'] ?? 0);
     $skippedInvalidContent = (int) ($result['skipped_invalid_content'] ?? 0);
     $skippedReadError = (int) ($result['skipped_read_error'] ?? 0);
+    $skippedDuplicateName = (int) ($result['skipped_duplicate_name'] ?? 0);
+    $failureRows = is_array($result['failure_rows'] ?? null) ? $result['failure_rows'] : [];
+    $report = chatCreateAdminUploadFailuresReport($failureRows);
+    $reportUrl = is_array($report) ? ($report['url'] ?? null) : null;
 
     $message = $storedCount === 1
         ? t('chat_images.zip_success_single')
@@ -51,12 +55,15 @@ try {
         if ($skippedReadError > 0) {
             $parts[] = str_replace('{count}', (string) $skippedReadError, t('chat_images.zip_skipped_read_error'));
         }
+        if ($skippedDuplicateName > 0) {
+            $parts[] = str_replace('{count}', (string) $skippedDuplicateName, 'Duplicadas: {count}.');
+        }
         if (!empty($parts)) {
             $message .= ' ' . implode(' ', $parts);
         }
     }
 
-    echo json_encode([
+    $payload = [
         'ok' => true,
         'stored_count' => $storedCount,
         'skipped_count' => $skippedCount,
@@ -64,8 +71,20 @@ try {
         'skipped_invalid_type' => $skippedInvalidType,
         'skipped_invalid_content' => $skippedInvalidContent,
         'skipped_read_error' => $skippedReadError,
+        'skipped_duplicate_name' => $skippedDuplicateName,
         'message' => $message,
-    ]);
+        'report_url' => $reportUrl,
+    ];
+
+    if ($storedCount === 0) {
+        http_response_code(400);
+        $payload['ok'] = false;
+        $payload['message'] = !empty($failureRows)
+            ? 'No se cargo ninguna imagen. Se descargara un reporte con el detalle.'
+            : t('chat_images.zip_error_empty');
+    }
+
+    echo json_encode($payload);
     exit;
 } catch (RuntimeException $exception) {
     $code = $exception->getMessage();
@@ -73,7 +92,6 @@ try {
         'invalid_upload' => t('chat_images.zip_error_upload'),
         'zip_not_supported' => t('chat_images.zip_error_not_supported'),
         'invalid_zip' => t('chat_images.zip_error_invalid'),
-        'zip_without_images' => t('chat_images.zip_error_empty'),
         default => t('chat_images.zip_error') . ' [' . $code . ']',
     };
 
